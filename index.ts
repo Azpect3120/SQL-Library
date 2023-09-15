@@ -1,10 +1,7 @@
 import { PSQL, Credentials, ConnectionUrl, Condition, Statement } from "./psql";
 import { Query, QueryResult } from "pg";
 
-// const object: PSQL = new PSQL(new Credentials("bubble.db.elephantsql.com", "afdezhvt", "afdezhvt", "IRIOr9zZ0yZenxud03vs0wJWguwUxF21", 5432));
-// const object2: PSQL = new PSQL(new ConnectionUrl("postgres://afdezhvt:IRIOr9zZ0yZenxud03vs0wJWguwUxF21@bubble.db.elephantsql.com/afdezhvt"));
-
-const object: PSQL = new PSQL(new ConnectionUrl("postgres://ruczahzd:Gj4VH-9koRNaijBm_OV27D-10AgIjZPq@mahmud.db.elephantsql.com/ruczahzd"));
+const object: PSQL = new PSQL(new ConnectionUrl(""));
 
 // object.select("users", ["id", "username", "password"]);
 // object.select("users", "*");
