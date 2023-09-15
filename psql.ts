@@ -58,6 +58,27 @@ export class Condition
     }
 }
 
+export class ResultSet implements QueryResult
+{
+    query: string;
+    command: string;
+    rows: any[];
+    rowCount: number;
+    oid: any;
+    fields: any[];
+
+    constructor (query: string, result: QueryResult)
+    {
+        this.rows = result.rows;
+        this.command = result.command;
+        this.rowCount = result.rowCount;
+        this.oid = result.oid;
+        this.fields = result.fields;
+        this.query = query;
+    }
+
+}
+
 export class PSQL
 {
     private pool: Pool;
@@ -87,7 +108,7 @@ export class PSQL
      * @param condition Condition of the select statement
      * @returns Results of the query
      */
-    async select (table: string, columns: string[] | string, condition?: Condition): Promise<QueryResult>
+    async select (table: string, columns: string[] | string, condition?: Condition): Promise<ResultSet>
     {
         try {
             // Create client connection
@@ -104,8 +125,9 @@ export class PSQL
                 // Release the client connection back to the pool
                 connection.release();
 
-                // Return result
-                return result;
+                // Return ResultSet
+                const resultSet: ResultSet = new ResultSet(query, result);
+                return resultSet;
             
             // Multi column: string[]
             } else if (Array.isArray(columns) && columns.every(col => typeof col === "string")) {
@@ -118,8 +140,9 @@ export class PSQL
                 // Release the client connection back to the pool
                 connection.release();
 
-                // Return result
-                return result;
+                // Return ResultSet
+                const resultSet: ResultSet = new ResultSet(query, result);
+                return resultSet;
             
             // Invalid column
             } else {
@@ -132,7 +155,7 @@ export class PSQL
         }
     };
 
-    async insert (table: string, columns: string[] | string, values: string[] | string): Promise<QueryResult>
+    async insert (table: string, columns: string[] | string, values: string[] | string): Promise<ResultSet>
     {
         try {
             // Create client connection
@@ -144,16 +167,16 @@ export class PSQL
                 // Query string
                 const query: string = `INSERT INTO ${table} (${columns}) VALUES ('${values}');`;
 
-                console.log(query);
-
                 // Query database
                 const result: QueryResult = await connection.query(query);
 
                 // Release connection back to the pool
                 connection.release();
                 
-                // Return result
-                return result;
+                // Return ResultSet
+                const resultSet: ResultSet = new ResultSet(query, result);
+                return resultSet;
+
 
             // Multiple columns and values: string[]
             } else if (Array.isArray(columns) && columns.every(col => typeof col === "string") && Array.isArray(values) && values.every(col => typeof col === "string")) {
@@ -165,16 +188,15 @@ export class PSQL
                 // Query string
                 const query: string = `INSERT INTO ${table} (${columns.join(",")}) VALUES (${values.join(",")});`;
 
-                console.log(query);
-
                 // Query database
                 const result: QueryResult = await connection.query(query);
 
                 // Release connection back to the pool
                 connection.release();
                 
-                // Return result
-                return result;
+                // Return ResultSet
+                const resultSet: ResultSet = new ResultSet(query, result);
+                return resultSet;
             
             // Un-matching types
             } else {
@@ -192,7 +214,7 @@ export class PSQL
      * @param table Name(s) of the target table
      * @returns Result of the query
      */
-    async drop (table: string | string[]): Promise<QueryResult[]>
+    async drop (table: string | string[]): Promise<ResultSet[]>
     {
         try {
             // Create client connection
@@ -209,13 +231,14 @@ export class PSQL
                 // Release the client connection back to the pool
                 connection.release();
 
-                // Return result
-                return [ result ];
+                // Return ResultSet
+                const resultSet: ResultSet = new ResultSet(query, result);
+                return [ resultSet ];
 
             // Multiple tables: string[]
             } else if (Array.isArray(table) && table.every(col => typeof col === "string")) {
                 // List of query results
-                const results: QueryResult[] = [];
+                const resultSets: ResultSet[] = []; 
 
                 // For each table in array
                 for (const name of table) {
@@ -225,15 +248,17 @@ export class PSQL
                     // Query database
                     const result: QueryResult = await connection.query(query);
 
+                    // Create ResultSet
+                    const resultSet: ResultSet = new ResultSet(query, result);
                     // Add result to results
-                    results.push(result);
+                    resultSets.push(resultSet);
                 };
 
                 // Release the client connection back to the pool
                 connection.release();
 
-                // Return result
-                return results;
+                // Return ResultSet
+                return resultSets;
 
 
             // Invalid table
