@@ -1,4 +1,4 @@
-import { Pool, QueryResult } from "pg";
+import { Connection, Pool, PoolClient, QueryResult } from "pg";
 
 // Enums
 export enum Statement {
@@ -91,7 +91,7 @@ export class PSQL
     {
         try {
             // Create client connection
-            const connection = await this.pool.connect();
+            const connection: PoolClient = await this.pool.connect();
 
             // Single column: string
             if (typeof columns === "string") {
@@ -129,12 +129,63 @@ export class PSQL
         // Catch errors
         } catch (err: any) {
             throw new Error("Error:" + err);
-
-        // Close pool connection
-        } finally {
-            this.pool.end();
         }
     };
+
+    async insert (table: string, columns: string[] | string, values: string[] | string): Promise<QueryResult>
+    {
+        try {
+            // Create client connection
+            const connection: PoolClient = await this.pool.connect();
+
+            // Ensure matching column and value types
+            // Single column and value: string
+            if (typeof columns === "string" && typeof values === "string") {
+                // Query string
+                const query: string = `INSERT INTO ${table} (${columns}) VALUES ('${values}');`;
+
+                console.log(query);
+
+                // Query database
+                const result: QueryResult = await connection.query(query);
+
+                // Release connection back to the pool
+                connection.release();
+                
+                // Return result
+                return result;
+
+            // Multiple columns and values: string[]
+            } else if (Array.isArray(columns) && columns.every(col => typeof col === "string") && Array.isArray(values) && values.every(col => typeof col === "string")) {
+                // Format values array
+                for (let i = 0; i < values.length; i++) {
+                    values[i] = `'${values[i]}'`;
+                }
+
+                // Query string
+                const query: string = `INSERT INTO ${table} (${columns.join(",")}) VALUES (${values.join(",")});`;
+
+                console.log(query);
+
+                // Query database
+                const result: QueryResult = await connection.query(query);
+
+                // Release connection back to the pool
+                connection.release();
+                
+                // Return result
+                return result;
+            
+            // Un-matching types
+            } else {
+                throw new Error("Invalid column/value types");
+            }
+
+        // Catch errors
+        } catch (err) {
+            throw new Error("Error: " + err);
+        }
+    }
 
     /**
      * Drops a table from a database
@@ -145,7 +196,7 @@ export class PSQL
     {
         try {
             // Create client connection
-            const connection = await this.pool.connect();
+            const connection: PoolClient = await this.pool.connect();
 
             // Single table: string
             if (typeof table === "string") {
@@ -192,14 +243,6 @@ export class PSQL
         // Catch errors
         } catch (err) {
             throw new Error("Error: " + err);
-        
-        // Close pool connection
-        } finally {
-            this.pool.end();
         }
     }
-    
-
-
-
 };
