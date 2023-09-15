@@ -141,7 +141,7 @@ export class PSQL
      * @param table Name(s) of the target table
      * @returns Result of the query
      */
-    async drop (table: string | string[]): Promise<QueryResult>
+    async drop (table: string | string[]): Promise<QueryResult[]>
     {
         try {
             // Create client connection
@@ -159,10 +159,31 @@ export class PSQL
                 connection.release();
 
                 // Return result
-                return result;
+                return [ result ];
 
             // Multiple tables: string[]
             } else if (Array.isArray(table) && table.every(col => typeof col === "string")) {
+                // List of query results
+                const results: QueryResult[] = [];
+
+                // For each table in array
+                for (const name of table) {
+                    // Query string
+                    const query: string = `DROP TABLE ${name}`;
+
+                    // Query database
+                    const result: QueryResult = await connection.query(query);
+
+                    // Add result to results
+                    results.push(result);
+                };
+
+                // Release the client connection back to the pool
+                connection.release();
+
+                // Return result
+                return results;
+
 
             // Invalid table
             } else {
