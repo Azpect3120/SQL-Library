@@ -1,7 +1,8 @@
 import { Connection, Pool, PoolClient, QueryResult } from "pg";
 
 // Enums
-export enum Statement {
+export enum Statement
+{
   WHERE = "WHERE",
   NOT = "NOT",
   OR = "OR",
@@ -16,9 +17,13 @@ export enum Statement {
   EXISTS = "EXISTS",
   ANY = "ANY",
   ALL = "ALL",
-}
+};
 
-
+export enum Constraint
+{
+    PRIMARY_KEY = "PRIMARY KEY",
+    FOREIGN_KEY = "FOREIGN KEY"
+};
 
 export class Credentials
 {
@@ -56,7 +61,7 @@ export class Condition
     {
         this.condition = `${tableCondition} ${column} ${columnCondition}${comparator ? " '" + comparator + "'": ""}`;         
     }
-}
+};
 
 export class ResultSet implements QueryResult
 {
@@ -77,7 +82,7 @@ export class ResultSet implements QueryResult
         this.query = query;
     }
 
-}
+};
 
 export class PSQL
 {
@@ -155,6 +160,13 @@ export class PSQL
         }
     };
 
+    /**
+     * Insert value(s) into a table
+     * @param table Insert table target
+     * @param columns Column names
+     * @param values Column values
+     * @returns Results of the query
+     */
     async insert (table: string, columns: string[] | string, values: string[] | string): Promise<ResultSet>
     {
         try {
@@ -207,12 +219,12 @@ export class PSQL
         } catch (err) {
             throw new Error("Error: " + err);
         }
-    }
+    };
 
     /**
      * Drops a table from a database
      * @param table Name(s) of the target table
-     * @returns Result of the query
+     * @returns Results of the query
      */
     async drop (table: string | string[]): Promise<ResultSet[]>
     {
@@ -264,6 +276,69 @@ export class PSQL
             // Invalid table
             } else {
                 throw new Error("Invalid table parameters");
+            }
+        // Catch errors
+        } catch (err) {
+            throw new Error("Error: " + err);
+        }
+    };
+
+
+    /**
+     * Creates a new table in the database
+     * @param table Name of new table
+     * @param columns Table column definition
+     * @return Results of the query
+     */
+    async create (table: string, columns: { name: string, type: string, constraint?: Constraint } | { name: string, type: string, constraint?: Constraint }[]): Promise<ResultSet>
+    {
+        try {
+            // Create client connection
+            const connection: PoolClient = await this.pool.connect();
+
+            // Single column: {}
+            if (!Array.isArray(columns) && typeof columns === "object" && typeof columns.name === "string" && typeof columns.type === "string") {
+                // Query string
+                const query: string = `CREATE TABLE ${table} (${columns.name} ${columns.type}${columns.constraint ? " " + columns.constraint : ""})`;
+
+                // Execute query
+                const result: QueryResult = await connection.query(query);
+
+                // Create ResultSet
+                const resultSet: ResultSet = new ResultSet(query, result);
+
+                // Return ResultSet
+                return resultSet;
+
+            // Multiple columns: [{}]
+            } else if (Array.isArray(columns) && 
+                columns.every(col => typeof col === "object" && 
+                    "name" in col && 
+                    "type" in col && 
+                    typeof col.name === "string" &&
+                    typeof col.type === "string"
+            )) {
+                // Format columns
+                const cols: string[] = [];
+                columns.forEach(col => {
+                    cols.push(`${col.name} ${col.type}${col.constraint ? " " + col.constraint : ""}`);
+                });
+
+                // Query string
+                const query: string = `CREATE TABLE ${table} (${cols});`;
+
+                // Execute query
+                const result: QueryResult = await connection.query(query);
+
+                // Create ResultSet
+                const resultSet: ResultSet = new ResultSet(query, result);
+
+                // Return ResultSet
+                return resultSet;
+
+            // Invalid parameters
+            } else {
+                throw new Error("Invalid parameters");
             }
         // Catch errors
         } catch (err) {
